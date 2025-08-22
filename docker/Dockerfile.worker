@@ -1,0 +1,39 @@
+FROM oven/bun:1.1.14
+
+WORKDIR /app
+
+# Install netcat for health checks
+RUN apt-get update && apt-get install -y netcat-openbsd && rm -rf /var/lib/apt/lists/*
+
+# Copy package files
+COPY package.json bun.lock* turbo.json ./
+COPY apps/worker/package.json ./apps/worker/package.json
+COPY packages/store/package.json ./packages/store/package.json
+COPY packages/redisstream/package.json ./packages/redisstream/package.json
+
+# Install dependencies
+RUN bun install --frozen-lockfile
+
+# Copy source code
+COPY apps/worker ./apps/worker
+COPY packages/store ./packages/store
+COPY packages/redisstream ./packages/redisstream
+
+# Generate Prisma client
+WORKDIR /app/packages/store
+RUN bun run generate
+
+# Copy wait scripts
+COPY docker/wait-for-redis.sh /app/wait-for-redis.sh
+COPY docker/worker-start.sh /app/worker-start.sh
+RUN chmod +x /app/wait-for-redis.sh /app/worker-start.sh
+
+# Set working directory to worker
+WORKDIR /app/apps/worker
+
+# Set environment variables
+ENV DATABASE_URL="postgres://postgres:postgres@postgres:5432/mydb"
+ENV REDIS_URL="redis://redis:6379"
+
+# Start worker
+CMD ["/app/worker-start.sh"]

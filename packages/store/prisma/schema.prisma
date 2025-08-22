@@ -1,0 +1,48 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "darwin-arm64", "linux-musl-arm64-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User{
+    id        String      @id @default(uuid())
+    username  String      @unique
+    password  String
+    websites  Website[]
+}
+
+model Website {
+  id        String        @id @default(uuid())
+  url       String
+  userId    String
+  timeAdded DateTime
+  ticks     WebsiteTick[]
+  user      User          @relation(fields: [userId],references: [id])
+}
+
+model Region {
+  id     String   @id @default(uuid())
+  name   String
+  tickes WebsiteTick[]
+}
+
+model WebsiteTick {
+  id              String          @id @default(uuid())
+  response_time_ms Int
+  status          WebsiteStatus
+  region          Region          @relation(fields: [region_id], references: [id])
+  website         Website         @relation(fields: [website_id], references: [id])
+  region_id       String
+  website_id      String
+  createdAt       DateTime        @default(now())
+}
+
+enum WebsiteStatus {
+  Up
+  Down
+  Unknown
+}

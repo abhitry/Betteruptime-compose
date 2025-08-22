@@ -1,0 +1,21 @@
+{
+  "name": "pusher",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "dependencies":{
+    "store":"workspace:*",
+    "redisstream":"workspace:*"
+  }
+  ,
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "scripts": {
+    "start": "bun run index.ts"
+  }
+}
+

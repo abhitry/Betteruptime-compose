@@ -1,0 +1,40 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install curl and bash for Bun installation
+RUN apk add --no-cache curl bash
+
+# Install Bun
+RUN curl -fsSL https://bun.sh/install | bash
+ENV PATH="/root/.bun/bin:$PATH"
+
+# Copy package files
+COPY package.json bun.lock* turbo.json ./
+COPY apps/frontend/package.json ./apps/frontend/package.json
+COPY apps/frontend/tsconfig.json ./apps/frontend/tsconfig.json
+COPY apps/frontend/next.config.ts ./apps/frontend/next.config.ts
+COPY apps/frontend/components.json ./apps/frontend/components.json
+COPY apps/frontend/postcss.config.mjs ./apps/frontend/postcss.config.mjs
+
+# Install dependencies
+RUN bun install 
+
+# Copy frontend source
+COPY apps/frontend ./apps/frontend
+
+# Set working directory to frontend
+WORKDIR /app/apps/frontend
+
+# Build the application
+RUN bun run build
+
+# Set environment variables
+ENV NODE_ENV=production
+ENV NEXT_PUBLIC_BACKEND_URL=http://localhost:3001
+ENV PORT=3000
+
+EXPOSE 3000
+
+# Start the application
+CMD ["bun", "run", "start"]

@@ -1,0 +1,39 @@
+# Node modules
+node_modules
+**/node_modules
+
+# Build output
+apps/frontend/.next
+apps/frontend/out
+dist
+coverage
+tmp
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Git & Docker files
+.git
+.gitignore
+Dockerfile*
+.dockerignore
+
+# Local environment files (use ENV in Docker)
+*.env
+**/*.env
+
+# OS & editor files
+.DS_Store
+Thumbs.db
+.vscode
+.idea
+*.swp
+*.swo
+
+# Monorepo-specific files/folders not needed in container
+tests
+packages/redisstream/node_modules
+packages/store/node_modules

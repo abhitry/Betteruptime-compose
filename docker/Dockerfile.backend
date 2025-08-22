@@ -1,0 +1,42 @@
+FROM oven/bun:1.1.14
+
+WORKDIR /app
+
+# Install PostgreSQL client for health checks and migrations
+RUN apt-get update && apt-get install -y postgresql-client netcat-openbsd && rm -rf /var/lib/apt/lists/*
+
+# Copy package files for dependency installation
+COPY package.json bun.lock* turbo.json ./
+COPY apps/api/package.json ./apps/api/package.json
+COPY packages/store/package.json ./packages/store/package.json
+COPY packages/redisstream/package.json ./packages/redisstream/package.json
+
+# Install dependencies
+RUN bun install --frozen-lockfile
+
+# Copy source code
+COPY apps/api ./apps/api
+COPY packages/store ./packages/store
+COPY packages/redisstream ./packages/redisstream
+
+# Generate Prisma client
+WORKDIR /app/packages/store
+RUN bun run generate
+
+# Copy and make entrypoint script executable
+COPY docker/entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+# Set working directory back to API
+WORKDIR /app/apps/api
+
+# Set environment variables
+ENV DATABASE_URL="postgres://postgres:postgres@postgres:5432/mydb"
+ENV REDIS_URL="redis://redis:6379"
+ENV JWT_SECRET="secret"
+ENV PORT=3001
+
+EXPOSE 3001
+
+# Use entrypoint script
+ENTRYPOINT ["/app/entrypoint.sh"]
