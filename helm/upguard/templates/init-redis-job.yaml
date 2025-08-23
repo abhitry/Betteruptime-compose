@@ -1,0 +1,45 @@
+{{- if .Values.initJobs.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "upguard.fullname" . }}-redis-init
+  labels:
+    {{- include "upguard.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis-init
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "2"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  template:
+    metadata:
+      labels:
+        {{- include "upguard.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: redis-init
+    spec:
+      restartPolicy: Never
+      initContainers:
+        - name: wait-for-redis
+          image: redis:7-alpine
+          command:
+            - sh
+            - -c
+            - |
+              until redis-cli -h {{ include "upguard.fullname" . }}-redis-master ping; do
+                echo "Waiting for Redis..."
+                sleep 2
+              done
+              echo "Redis is ready!"
+      containers:
+        - name: redis-init
+          image: {{ .Values.initJobs.redis.image.repository }}:{{ .Values.initJobs.redis.image.tag }}
+          imagePullPolicy: {{ .Values.initJobs.redis.image.pullPolicy }}
+          workingDir: /app/packages/store
+          command:
+            - sh
+            - -c
+            - "bun run redis-seed"
+          envFrom:
+            - configMapRef:
+                name: {{ include "upguard.fullname" . }}-config
+{{- end }}

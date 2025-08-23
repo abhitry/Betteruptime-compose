@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "upguard.fullname" . }}-frontend
+  labels:
+    {{- include "upguard.labels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+spec:
+  replicas: {{ .Values.frontend.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "upguard.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: frontend
+  template:
+    metadata:
+      labels:
+        {{- include "upguard.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: frontend
+    spec:
+      initContainers:
+        - name: wait-for-api
+          image: curlimages/curl:latest
+          command:
+            - sh
+            - -c
+            - |
+              until curl -f http://{{ include "upguard.fullname" . }}-api:{{ .Values.api.service.port }}/health; do
+                echo "Waiting for API..."
+                sleep 5
+              done
+      containers:
+        - name: frontend
+          image: {{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}
+          imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.frontend.service.targetPort }}
+              protocol: TCP
+          env:
+            - name: PORT
+              value: {{ .Values.frontend.env.PORT | quote }}
+            - name: NEXT_PUBLIC_BACKEND_URL
+              value: "http://{{ include "upguard.fullname" . }}-api:{{ .Values.api.service.port }}"
+          resources:
+            {{- toYaml .Values.frontend.resources | nindent 12 }}

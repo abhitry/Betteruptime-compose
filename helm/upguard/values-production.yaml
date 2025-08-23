@@ -1,0 +1,164 @@
+# Production values for UpGuard
+# This overrides the default values.yaml for production deployment
+
+# PostgreSQL configuration for production
+postgresql:
+  enabled: true
+  auth:
+    postgresPassword: "CHANGE_ME_SECURE_PASSWORD"
+    username: postgres
+    password: "CHANGE_ME_SECURE_PASSWORD"
+    database: mydb
+  primary:
+    persistence:
+      enabled: true
+      size: 50Gi
+      storageClass: "fast-ssd"  # Use your preferred storage class
+    resources:
+      requests:
+        memory: 1Gi
+        cpu: 500m
+      limits:
+        memory: 2Gi
+        cpu: 1000m
+  metrics:
+    enabled: true
+
+# Redis configuration for production
+redis:
+  enabled: true
+  auth:
+    enabled: true
+    password: "CHANGE_ME_REDIS_PASSWORD"
+  master:
+    persistence:
+      enabled: true
+      size: 20Gi
+      storageClass: "fast-ssd"
+    resources:
+      requests:
+        memory: 512Mi
+        cpu: 250m
+      limits:
+        memory: 1Gi
+        cpu: 500m
+  metrics:
+    enabled: true
+
+# API service configuration for production
+api:
+  replicaCount: 3  # High availability
+  image:
+    repository: your-registry.com/upguard/api
+    tag: "v1.0.0"  # Use specific version tags
+    pullPolicy: Always
+  service:
+    type: ClusterIP
+    port: 3001
+  resources:
+    requests:
+      memory: 1Gi
+      cpu: 500m
+    limits:
+      memory: 2Gi
+      cpu: 1000m
+  env:
+    JWT_SECRET: "CHANGE_ME_VERY_SECURE_JWT_SECRET"
+    PORT: "3001"
+  healthCheck:
+    enabled: true
+    path: /health
+    initialDelaySeconds: 60
+    periodSeconds: 30
+
+# Frontend service configuration for production
+frontend:
+  replicaCount: 2
+  image:
+    repository: your-registry.com/upguard/frontend
+    tag: "v1.0.0"
+    pullPolicy: Always
+  service:
+    type: ClusterIP  # Use ingress instead of LoadBalancer
+    port: 80
+    targetPort: 3000
+  resources:
+    requests:
+      memory: 512Mi
+      cpu: 250m
+    limits:
+      memory: 1Gi
+      cpu: 500m
+
+# Pusher service configuration for production
+pusher:
+  replicaCount: 2  # Redundancy
+  image:
+    repository: your-registry.com/upguard/pusher
+    tag: "v1.0.0"
+    pullPolicy: Always
+  resources:
+    requests:
+      memory: 512Mi
+      cpu: 250m
+    limits:
+      memory: 1Gi
+      cpu: 500m
+
+# Worker service configuration for production
+worker:
+  replicaCount: 5  # Scale based on monitoring load
+  image:
+    repository: your-registry.com/upguard/worker
+    tag: "v1.0.0"
+    pullPolicy: Always
+  resources:
+    requests:
+      memory: 512Mi
+      cpu: 250m
+    limits:
+      memory: 1Gi
+      cpu: 500m
+  env:
+    REGION_ID: f5a13f6c-8e91-42b8-9c0e-07b4567a98e0
+
+# Ingress configuration for production
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    - host: upguard.yourdomain.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: frontend
+        - path: /api
+          pathType: Prefix
+          service: api
+  tls:
+    - secretName: upguard-tls
+      hosts:
+        - upguard.yourdomain.com
+
+# Init jobs configuration
+initJobs:
+  enabled: true
+  postgres:
+    image:
+      repository: your-registry.com/upguard/init
+      tag: "v1.0.0"
+      pullPolicy: Always
+  redis:
+    image:
+      repository: your-registry.com/upguard/init
+      tag: "v1.0.0"
+      pullPolicy: Always
+
+# Global image pull secrets for private registry
+global:
+  imagePullSecrets:
+    - name: registry-secret

@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "upguard.fullname" . }}-pusher
+  labels:
+    {{- include "upguard.labels" . | nindent 4 }}
+    app.kubernetes.io/component: pusher
+spec:
+  replicas: {{ .Values.pusher.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "upguard.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: pusher
+  template:
+    metadata:
+      labels:
+        {{- include "upguard.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: pusher
+    spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: postgres:15
+          command:
+            - sh
+            - -c
+            - |
+              until pg_isready -h {{ include "upguard.fullname" . }}-postgresql -p 5432 -U {{ .Values.postgresql.auth.username }}; do
+                echo "Waiting for PostgreSQL..."
+                sleep 2
+              done
+        - name: wait-for-redis
+          image: redis:7-alpine
+          command:
+            - sh
+            - -c
+            - |
+              until redis-cli -h {{ include "upguard.fullname" . }}-redis-master ping; do
+                echo "Waiting for Redis..."
+                sleep 2
+              done
+        - name: wait-for-api
+          image: curlimages/curl:latest
+          command:
+            - sh
+            - -c
+            - |
+              until curl -f http://{{ include "upguard.fullname" . }}-api:{{ .Values.api.service.port }}/health; do
+                echo "Waiting for API..."
+                sleep 5
+              done
+      containers:
+        - name: pusher
+          image: {{ .Values.pusher.image.repository }}:{{ .Values.pusher.image.tag }}
+          imagePullPolicy: {{ .Values.pusher.image.pullPolicy }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "upguard.fullname" . }}-config
+          env:
+            - name: POSTGRES_HOST
+              value: {{ include "upguard.fullname" . }}-postgresql
+            - name: POSTGRES_USER
+              value: {{ .Values.postgresql.auth.username | quote }}
+            - name: POSTGRES_PASSWORD
+              value: {{ .Values.postgresql.auth.password | quote }}
+          resources:
+            {{- toYaml .Values.pusher.resources | nindent 12 }}

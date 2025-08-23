@@ -1,0 +1,51 @@
+{{- if .Values.initJobs.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "upguard.fullname" . }}-postgres-init
+  labels:
+    {{- include "upguard.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgres-init
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "1"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  template:
+    metadata:
+      labels:
+        {{- include "upguard.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: postgres-init
+    spec:
+      restartPolicy: Never
+      initContainers:
+        - name: wait-for-postgres
+          image: postgres:15
+          command:
+            - sh
+            - -c
+            - |
+              until pg_isready -h {{ include "upguard.fullname" . }}-postgresql -p 5432 -U {{ .Values.postgresql.auth.username }}; do
+                echo "Waiting for PostgreSQL..."
+                sleep 2
+              done
+              echo "PostgreSQL is ready!"
+          env:
+            - name: PGPASSWORD
+              value: {{ .Values.postgresql.auth.password | quote }}
+      containers:
+        - name: postgres-init
+          image: {{ .Values.initJobs.postgres.image.repository }}:{{ .Values.initJobs.postgres.image.tag }}
+          imagePullPolicy: {{ .Values.initJobs.postgres.image.pullPolicy }}
+          command: ["/app/postgres-init.sh"]
+          envFrom:
+            - configMapRef:
+                name: {{ include "upguard.fullname" . }}-config
+          env:
+            - name: POSTGRES_HOST
+              value: {{ include "upguard.fullname" . }}-postgresql
+            - name: POSTGRES_USER
+              value: {{ .Values.postgresql.auth.username | quote }}
+            - name: POSTGRES_PASSWORD
+              value: {{ .Values.postgresql.auth.password | quote }}
+{{- end }}
