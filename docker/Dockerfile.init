@@ -2,21 +2,65 @@ FROM oven/bun:1.1.14
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y postgresql-client netcat-openbsd redis-tools \
+# Install required tools + Node.js
+RUN apt-get update && apt-get install -y \
+    postgresql-client \
+    netcat-openbsd \
+    redis-tools \
+    curl \
+    gnupg \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
     && bun add -g tsx \
+    bun add -d ts-node typescript\
     && rm -rf /var/lib/apt/lists/*
 
-COPY package.json bun.lock* turbo.json ./
-COPY apps/api/package.json ./apps/api/package.json
-COPY packages/store/package.json ./packages/store/package.json
-COPY packages/redisstream/package.json ./packages/redisstream/package.json
-RUN bun install --frozen-lockfile
 
-COPY apps/api ./apps/api
+
+# Copy workspace package files
+COPY package.json bun.lock* turbo.json ./
+COPY packages/store/package.json ./packages/store/package.json
+COPY packages/store/.env packages/store/.env
+# Copy all source code
 COPY packages/store ./packages/store
 COPY packages/redisstream ./packages/redisstream
 
+
+
+# Install dependencies at workspace root
+WORKDIR /app
+RUN bun install --frozen-lockfile
+
+# Install dependencies inside store package
 WORKDIR /app/packages/store
+RUN bun add -d tsx
+RUN bun add -d ts-node typescript
+RUN bun install --frozen-lockfile
+
+# Install @prisma/client explicitly
+#RUN bun add @prisma/client
+# Generate Prisma client (path is controlled by schema.prisma)
 RUN bun run generate
 
-# No ENTRYPOINT; init jobs will run only the provided command
+# Verify Prisma client was generated
+RUN ls -la /app/packages/store/node_modules/.prisma/client/ || echo "Prisma client not found"
+
+# Copy initialization scripts
+COPY docker/postgres-init.sh /app/postgres-init.sh
+
+COPY docker/wait-for-postgres.sh /app/wait-for-postgres.sh
+COPY docker/wait-for-redis.sh /app/wait-for-redis.sh
+
+
+# Make scripts executable
+RUN chmod +x /app/postgres-init.sh \
+    && chmod +x /app/wait-for-postgres.sh \
+    && chmod +x /app/wait-for-redis.sh
+
+
+
+# Set environment variables
+ENV DATABASE_URL="postgres://postgres:postgres@postgres:5432/mydb"
+
+
+WORKDIR /app

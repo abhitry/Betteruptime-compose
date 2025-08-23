@@ -5,10 +5,11 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: mydb
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/mydb
     ports:
       - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+    # volumes:
+    #   - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d mydb"]
       interval: 5s
@@ -19,8 +20,8 @@ services:
     image: redis:7-alpine
     ports:
       - "6379:6379"
-    volumes:
-      - redis_data:/data
+    # volumes:
+    #   - redis_data:/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -32,17 +33,12 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.init
-    working_dir: /app/packages/store
-    command: >
-      sh -lc "
-        bunx prisma migrate deploy &&
-        bunx tsx prisma/seed.ts
-      "
+    command: ["/app/postgres-init.sh"]
     depends_on:
       postgres:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgres://postgres:postgres@postgres:5432/mydb
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/mydb
     restart: "no"
 
   redis-init:
@@ -51,10 +47,12 @@ services:
       dockerfile: docker/Dockerfile.init
     working_dir: /app/packages/store
     command: >
-      sh -lc "bunx tsx prisma/redis-seed.ts"
+        sh -c "/app/wait-for-redis.sh redis 6379 && bun run redis-seed"
     depends_on:
       redis:
         condition: service_healthy
+    environment:
+      REDIS_URL: "redis://redis:6379"
     restart: "no"
     
   api:
@@ -140,6 +138,6 @@ services:
         condition: service_started
     restart: unless-stopped
 
-volumes:
-  postgres_data:
-  redis_data:
+# volumes:
+#   postgres_data:
+#   redis_data:

@@ -1,4 +1,5 @@
 #!/bin/bash
+
 HOST=${1:-redis}
 PORT=${2:-6379}
 

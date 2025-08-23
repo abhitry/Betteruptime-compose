@@ -1,6 +1,6 @@
 import { createClient } from "redis";
 
-const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
+const REDIS_URL = process.env.REDIS_URL || "redis://redis:6379";
 const client = createClient({ url: REDIS_URL });
 
 async function seed() {

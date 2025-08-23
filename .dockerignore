@@ -22,8 +22,6 @@ Dockerfile*
 .dockerignore
 
 # Local environment files (use ENV in Docker)
-*.env
-**/*.env
 
 # OS & editor files
 .DS_Store
