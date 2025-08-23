@@ -3,7 +3,9 @@ FROM oven/bun:1.1.14
 WORKDIR /app
 
 # Install netcat for health checks
-RUN apt-get update && apt-get install -y netcat-openbsd && rm -rf /var/lib/apt/lists/*
+#RUN apt-get update && apt-get install -y netcat-openbsd && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y netcat-openbsd curl && rm -rf /var/lib/apt/lists/*
+
 
 # Copy package files
 COPY package.json bun.lock* turbo.json ./

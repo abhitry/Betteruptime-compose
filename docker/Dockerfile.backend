@@ -3,7 +3,9 @@ FROM oven/bun:1.1.14
 WORKDIR /app
 
 # Install PostgreSQL client for health checks and migrations
-RUN apt-get update && apt-get install -y postgresql-client netcat-openbsd && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y postgresql-client netcat-openbsd \
+    && bun add -g tsx \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy package files for dependency installation
 COPY package.json bun.lock* turbo.json ./
@@ -18,6 +20,7 @@ RUN bun install --frozen-lockfile
 COPY apps/api ./apps/api
 COPY packages/store ./packages/store
 COPY packages/redisstream ./packages/redisstream
+COPY docker ./docker 
 
 # Generate Prisma client
 WORKDIR /app/packages/store
@@ -25,12 +28,14 @@ RUN bun run generate
 
 # Copy and make entrypoint script executable
 COPY docker/entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh \
+    && chmod +x /app/docker/wait-for-postgres.sh \
+    && chmod +x /app/docker/wait-for-redis.sh
 
 # Set working directory back to API
 WORKDIR /app/apps/api
 
-# Set environment variables
+# Environment variables
 ENV DATABASE_URL="postgres://postgres:postgres@postgres:5432/mydb"
 ENV REDIS_URL="redis://redis:6379"
 ENV JWT_SECRET="secret"

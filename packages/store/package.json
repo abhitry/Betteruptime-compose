@@ -7,7 +7,8 @@
     "migrate:dev": "bunx prisma migrate dev",
     "migrate:deploy": "bunx prisma migrate deploy",
     "generate": "bunx prisma generate",
-    "seed": "bun run prisma/seed.ts"
+    "seed": "bunx tsx prisma/seed.ts",
+    "redis-seed": "bunx tsx prisma/redis-seed.ts"
   },
   "devDependencies": {
     "@types/bun": "latest"

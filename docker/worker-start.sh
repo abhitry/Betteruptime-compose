@@ -9,7 +9,7 @@ echo "Waiting for Redis..."
 
 # Wait for API to be ready (it handles DB setup)
 echo "Waiting for API to be ready..."
-until curl -f http://api:3001/websites 2>/dev/null || [ $? -eq 7 ]; do
+until curl -f http://api:3001/health 2>/dev/null || [ $? -eq 7 ]; do
   echo "API not ready - sleeping"
   sleep 5
 done

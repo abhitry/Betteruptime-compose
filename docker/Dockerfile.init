@@ -1,0 +1,22 @@
+FROM oven/bun:1.1.14
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y postgresql-client netcat-openbsd redis-tools \
+    && bun add -g tsx \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY package.json bun.lock* turbo.json ./
+COPY apps/api/package.json ./apps/api/package.json
+COPY packages/store/package.json ./packages/store/package.json
+COPY packages/redisstream/package.json ./packages/redisstream/package.json
+RUN bun install --frozen-lockfile
+
+COPY apps/api ./apps/api
+COPY packages/store ./packages/store
+COPY packages/redisstream ./packages/redisstream
+
+WORKDIR /app/packages/store
+RUN bun run generate
+
+# No ENTRYPOINT; init jobs will run only the provided command
